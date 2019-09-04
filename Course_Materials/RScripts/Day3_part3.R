@@ -94,8 +94,14 @@ browseKEGG(keggResults, 'mmu03320')
 
 # Generate a figure
 
+
 library(pathview)
 
+logFC <- annotLvV$logFC
+names(logFC) <- annotLvV$Entrez
+
+
+pathview(gene.data = logFC, pathway.id="mmu03320", species = "mmu", limit= list(gene=5))
 
 
 
