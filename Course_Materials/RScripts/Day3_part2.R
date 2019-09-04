@@ -137,7 +137,7 @@ ggplot(shrinkLvL,
   labs(x="mean of normalised counts", y="log fold change")
 
 
-## Challenge
+## Challenge Volcano Plot
 
 shrinkLvL <- shrinkLvL %>%
   mutate(log10=-log10(FDR))
@@ -147,5 +147,81 @@ ggplot(shrinkLvL,
   geom_point(aes(colour=FDR<0.05), shape=20, size=0.5) +
   #geom_text(aes(label=TopGeneLabel)) +
   labs(x="LogFC", y="-Log10(FDR)")
+
+# In Class solution
+
+# Volcano Plot
+
+shrinkLvV <- shrinkLvL %>%
+  mutate(`-log10pvalue`= -log10(pvalue))
+
+ggplot(shrinkLvV, 
+       aes(x= logFC, y=`-log10pvalue`)) +
+  geom_point(aes(colour=FDR<0.05), shape=20, size=0.5) +
+  labs(x="LogFC", y="-log10pvalue")
+
+## strip chart
+
+topgene <- filter(shrinkLvV, Symbol=="Wap")
+geneID <- topgene$GeneID
+
+plotCounts(ddsObj, gene = geneID, intgroup = c("CellType", "Status"),
+           returnData = T) %>% 
+  ggplot(aes(x=Status, y=log2(count))) +
+  geom_point(aes(fill=Status), shape=21, size=2) +
+  facet_wrap(~CellType) +
+  expand_limits(y=0)
+
+
+# Heatmaps
+library(ComplexHeatmap)
+library(circlize)
+
+# getting signeficant genes
+
+sigGenes <- as.data.frame(shrinkLvV) %>% 
+  top_n(150, wt=-FDR) %>% 
+  pull("GeneID")
+
+
+plotDat <- vst(ddsObj)[sigGenes,] %>% 
+  assay()  # just pulls out the counts
+z.mat <- t(scale(t(plotDat), center=TRUE, scale=TRUE)) 
+
+# colour palette
+myPalette <- c("red3", "ivory", "blue3")
+myRamp <- colorRamp2(c(-2, 0, 2), myPalette)
+
+Heatmap(z.mat, name = "z-score",
+        col = myRamp,            
+        show_row_names = FALSE,
+        cluster_columns = FALSE)
+
+# Better Heatmap
+
+hcDat <- hclust(dist(z.mat))
+cutGroups <- cutree(hcDat, h=4)
+
+ha1 <- HeatmapAnnotation(df = colData(ddsObj)[, c("CellType", "Status")  ])
+Heatmap(z.mat, name = "z-score",
+        col = myRamp,            
+        show_row_names = FALSE,
+        cluster_columns = FALSE,
+        split = cutGroups,
+        rect_gp = gpar(col = "darkgrey", lwd=0.5),
+        top_annotation = ha1)
+
+
+
+save(annotLvV, shrinkLvV, file="results/Annotated_Results_LvV.RData")
+
+
+
+
+
+
+
+
+
 
 
